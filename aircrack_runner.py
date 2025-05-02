@@ -97,21 +97,32 @@ def run_aircrack(
 
 def analyze_and_run_aircrack(pcap_file: str, dict_file: str) -> str:
     """
-    Основная функция. Сначала анализирует pcap-файл, чтобы получить BSSID,
+    Анализирует pcap-файл, чтобы получить BSSID,
     затем запускает aircrack-ng с найденным BSSID.
+    Результат сохраняется в файл {имя_файла.pcap}.txt
     """
     bssid = analyze_pcap(pcap_file)
     if not bssid:
-        return "NO HANDSHAKE FOUND"
+        result = "NO HANDSHAKE FOUND"
+    else:
+        result = run_aircrack(pcap_file, dict_file, bssid)
 
-    # После успешного анализа запускаем второй этап с BSSID
-    return run_aircrack(pcap_file, dict_file, bssid)
+    # Сохраняем результат
+    result_filename = f"{pcap_file}.txt"
+    try:
+        with open(result_filename, "w") as f:
+            f.write(result + "\n")
+        print(f"[+] Result saved to {result_filename}")
+    except IOError as e:
+        print(f"[!] Failed to save result: {e}")
+
+    return result
 
 
 # Пример вызова
 if __name__ == "__main__":
-    pcap_file = "test/hs2.pcap"
-    dict_file = "test/cracked.txt"
+    pcap_file = "uploads/handshake.pcap"
+    dict_file = "dicts/cracked.txt"
 
     result = analyze_and_run_aircrack(pcap_file, dict_file)
     print(f"Result: {result}")

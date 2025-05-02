@@ -16,7 +16,7 @@ id = config["client"]["id"]
 
 clients = {}  # {client_id: status}
 
-CLIENT_ID = f"client_{random.randint(1000,9999)}"
+CLIENT_ID = id
 clients_state_topic = "cluster/clients/state"
 announce_topic = "cluster/clients/announce"
 task_topic = f"cluster/tasks/assign/{CLIENT_ID}"
