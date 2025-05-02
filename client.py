@@ -5,6 +5,7 @@ import random
 from mqtt import MQTT
 import yaml
 from aircrack_runner import analyze_and_run_aircrack
+import psutil
 
 
 def load_config(file_path="config/client_config.yaml"):
@@ -23,6 +24,17 @@ task_topic = f"cluster/tasks/assign/{CLIENT_ID}"
 result_topic = f"cluster/tasks/result/{CLIENT_ID}"
 
 mqtt_client = MQTT(id)
+
+def send_system_stats():
+    while True:
+        stats = {
+            "client_id": "client-id",
+            "cpu": psutil.cpu_percent(),
+            "ram": psutil.virtual_memory().percent,
+            "disk": psutil.disk_usage("/").percent
+        }
+        mqtt_client.publish("cluster/clients/stats", json.dumps(stats))
+        time.sleep(15)
 
 def do_task(task):
     mqtt_client.publish(clients_state_topic, json.dumps({

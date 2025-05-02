@@ -5,6 +5,7 @@ import random
 from mqtt import MQTT
 import yaml
 from task_manager import watch_loop
+from web import run_flask_app
 
 def load_config(file_path="config/server_config.yaml"):
     with open(file_path, "r") as f:
@@ -15,6 +16,7 @@ id = config["server"]["id"]
 
 clients = {}  # {client_id: status}
 task_queue = []
+clients_info = {}
 
 mqtt_client = MQTT(id)
 
@@ -45,6 +47,16 @@ def handle_message(topic, payload):
         client_id = topic.split("/")[-1]
         print(f"[✓] Client {client_id} finished task: {payload['result']}")
         clients[client_id] = "free"
+
+    elif topic == "cluster/clients/stats":
+        data = json.loads(payload)
+        client_id = data["client_id"]
+        clients_info[client_id] = {
+            "cpu": data["cpu"],
+            "ram": data["ram"],
+            "disk": data["disk"],
+            "last_seen": time.time()
+        }
 
 def task_sender():
     while True:
@@ -85,6 +97,7 @@ def main():
 
     threading.Thread(target=task_sender, daemon=True).start()
     threading.Thread(target=watch_loop, args=(on_new_file_detected,), daemon=True).start()
+    threading.Thread(target=run_flask_app, args=(clients,), daemon=True).start()
 
     while True:
         msg = mqtt_client.get_message()
