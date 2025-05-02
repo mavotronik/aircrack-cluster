@@ -3,8 +3,9 @@ import time
 import json
 import random
 from mqtt import MQTT
-
 import yaml
+from aircrack_runner import analyze_and_run_aircrack
+
 
 def load_config(file_path="config/client_config.yaml"):
     with open(file_path, "r") as f:
@@ -30,8 +31,10 @@ def do_task(task):
     }))
 
     print(f"[{CLIENT_ID}] Starting task...")
-    time.sleep(random.randint(5, 10))  # simulate aircrack-ng work
-    result = random.choice(["KEY FOUND!", "KEY NOT FOUND", "INCORRECT HASH"])
+    pcap_file = task["pcap_file"]
+    dict_file = task["dict_file"]
+
+    result = analyze_and_run_aircrack(pcap_file, dict_file)
 
     mqtt_client.publish(result_topic, json.dumps({
         "result": result
@@ -42,6 +45,7 @@ def do_task(task):
         "status": "free"
     }))
     print(f"[{CLIENT_ID}] Finished task: {result}")
+
 
 def handle_message(topic, payload):
     if topic == task_topic:

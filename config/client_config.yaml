@@ -1,2 +1,4 @@
 client:
   id: client_2
+  hs_dir: "uploads"
+  dict_dir: "dicts"

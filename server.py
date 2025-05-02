@@ -4,6 +4,7 @@ import json
 import random
 from mqtt import MQTT
 import yaml
+from task_manager import watch_loop
 
 def load_config(file_path="config/server_config.yaml"):
     with open(file_path, "r") as f:
@@ -13,6 +14,7 @@ config = load_config()
 id = config["server"]["id"]
 
 clients = {}  # {client_id: status}
+task_queue = []
 
 mqtt_client = MQTT(id)
 
@@ -26,8 +28,12 @@ def handle_message(topic, payload):
 
     if topic.startswith("cluster/clients/announce"):
         client_id = payload["client_id"]
-        clients[client_id] = "free"
-        print(f"[+] New client: {client_id}")
+        if client_id not in clients:
+            clients[client_id] = "free"
+            print(f"[+] New client: {client_id}")
+        else:
+            print(f"[♥] Heartbeat from client: {client_id}")
+            # clients[client_id] = "free"
 
     elif topic.startswith("cluster/clients/state"):
         client_id = payload["client_id"]
@@ -42,18 +48,33 @@ def handle_message(topic, payload):
 
 def task_sender():
     while True:
-        time.sleep(5)
+        time.sleep(2)
+
+        if not task_queue:
+            continue
+
         free_clients = [cid for cid, status in clients.items() if status == "free"]
-        if free_clients:
-            client_id = random.choice(free_clients)
-            task = {
-                "pcap_file": "handshake.cap",
-                "dict_file": "rockyou.txt",
-                "bssid": "AA:BB:CC:DD:EE:FF"
-            }
-            mqtt_client.publish(f"cluster/tasks/assign/{client_id}", json.dumps(task))
-            clients[client_id] = "busy"
-            print(f"[>] Task pushed to client {client_id}")
+        if not free_clients:
+            continue
+
+        task = task_queue.pop(0)  # get task from queue
+        client_id = random.choice(free_clients)
+
+        # Send task without BSSID, client will find itself
+        mqtt_client.publish(
+            f"cluster/tasks/assign/{client_id}",
+            json.dumps(task)
+        )
+        clients[client_id] = "busy"
+        print(f"[>] Task sent to client {client_id}: {task['pcap_file']}")
+
+def on_new_file_detected(filepath):
+    task = {
+        "pcap_file": filepath,
+        "dict_file": "dicts/cracked.txt"
+    }
+    task_queue.append(task)
+    print(f"[+] Task added for file: {filepath}")
 
 def main():
     mqtt_client.connect()
@@ -61,7 +82,9 @@ def main():
     mqtt_client.subscribe("cluster/clients/state/#")
     mqtt_client.subscribe("cluster/tasks/result/#")
 
+
     threading.Thread(target=task_sender, daemon=True).start()
+    threading.Thread(target=watch_loop, args=(on_new_file_detected,), daemon=True).start()
 
     while True:
         msg = mqtt_client.get_message()

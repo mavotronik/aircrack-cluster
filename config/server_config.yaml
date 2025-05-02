@@ -1,2 +1,4 @@
 server:
   id: server
+  hs_dir: "uploads/"
+  dict_dir: "dicts"
