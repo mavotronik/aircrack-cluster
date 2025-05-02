@@ -2,22 +2,27 @@ import threading
 import time
 import json
 import random
-import paho.mqtt.client as mqtt
+from mqtt import MQTT
+import yaml
+
+def load_config(file_path="config/server_config.yaml"):
+    with open(file_path, "r") as f:
+        return yaml.safe_load(f)
+
+config = load_config()
+id = config["server"]["id"]
 
 clients = {}  # {client_id: status}
 
-BROKER = "localhost"  # IP or hostname of MQTT broker
-PORT = 1883
+mqtt_client = MQTT(id)
 
-def on_connect(client, userdata, flags, rc):
-    print("Server connected to broker")
-    client.subscribe("cluster/clients/announce")
-    client.subscribe("cluster/clients/state/#")
-    client.subscribe("cluster/tasks/result/#")
-
-def on_message(client, userdata, msg):
-    topic = msg.topic
-    payload = json.loads(msg.payload.decode())
+def handle_message(topic, payload):
+    global clients
+    try:
+        payload = json.loads(payload)
+    except json.JSONDecodeError:
+        print(f"[!] Failed to decode JSON from topic {topic}")
+        return
 
     if topic.startswith("cluster/clients/announce"):
         client_id = payload["client_id"]
@@ -37,7 +42,7 @@ def on_message(client, userdata, msg):
 
 def task_sender():
     while True:
-        time.sleep(5)  # Check if any tasks every 5 secs
+        time.sleep(5)
         free_clients = [cid for cid, status in clients.items() if status == "free"]
         if free_clients:
             client_id = random.choice(free_clients)
@@ -46,17 +51,24 @@ def task_sender():
                 "dict_file": "rockyou.txt",
                 "bssid": "AA:BB:CC:DD:EE:FF"
             }
-            client.publish(f"cluster/tasks/assign/{client_id}", json.dumps(task))
+            mqtt_client.publish(f"cluster/tasks/assign/{client_id}", json.dumps(task))
             clients[client_id] = "busy"
             print(f"[>] Task pushed to client {client_id}")
 
-client = mqtt.Client(client_id="server")
-client.on_connect = on_connect
-client.on_message = on_message
+def main():
+    mqtt_client.connect()
+    mqtt_client.subscribe("cluster/clients/announce")
+    mqtt_client.subscribe("cluster/clients/state/#")
+    mqtt_client.subscribe("cluster/tasks/result/#")
 
-client.connect(BROKER, PORT, keepalive=60)
+    threading.Thread(target=task_sender, daemon=True).start()
 
-# Start thread to send tsks to clients
-threading.Thread(target=task_sender, daemon=True).start()
+    while True:
+        msg = mqtt_client.get_message()
+        if msg:
+            topic, payload = msg
+            handle_message(topic, payload)
+        time.sleep(0.1)
 
-client.loop_forever()
+if __name__ == "__main__":
+    main()
