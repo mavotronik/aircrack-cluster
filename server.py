@@ -5,7 +5,8 @@ import random
 from mqtt import MQTT
 import yaml
 from task_manager import watch_loop
-from web import run_flask_app
+import os
+# from web import run_flask_app
 
 def load_config(file_path="config/server_config.yaml"):
     with open(file_path, "r") as f:
@@ -47,6 +48,14 @@ def handle_message(topic, payload):
         client_id = topic.split("/")[-1]
         print(f"[✓] Client {client_id} finished task: {payload['result']}")
         clients[client_id] = "free"
+
+    elif topic == "cluster/tasks/new":
+        print(f"[++] New task received from web: {payload}")
+        task = payload  # dict with: pcap_file, dict_file
+        task["pcap_file"] = os.path.basename(task["pcap_file"])
+        task["dict_file"] = os.path.basename(task["dict_file"])
+        task_queue.append(task)
+        
 
     elif topic == "cluster/clients/stats":
         data = json.loads(payload)
@@ -93,11 +102,10 @@ def main():
     mqtt_client.subscribe("cluster/clients/announce")
     mqtt_client.subscribe("cluster/clients/state/#")
     mqtt_client.subscribe("cluster/tasks/result/#")
-
+    mqtt_client.subscribe("cluster/tasks/new")
 
     threading.Thread(target=task_sender, daemon=True).start()
-    threading.Thread(target=watch_loop, args=(on_new_file_detected,), daemon=True).start()
-    threading.Thread(target=run_flask_app, args=(clients,), daemon=True).start()
+    # threading.Thread(target=watch_loop, args=(on_new_file_detected,), daemon=True).start()
 
     while True:
         msg = mqtt_client.get_message()

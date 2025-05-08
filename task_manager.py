@@ -7,7 +7,7 @@ def load_config(file_path="config/server_config.yaml"):
         return yaml.safe_load(f)
 
 config = load_config()
-PCAP_DIR = config["server"]["hs_dir"]
+PCAP_DIR = config["paths"]["hs_dir"]
 
 # PCAP_DIR = "pcaps"
 KNOWN_FILES = set()

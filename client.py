@@ -14,6 +14,8 @@ def load_config(file_path="config/client_config.yaml"):
 
 config = load_config()
 id = config["client"]["id"]
+hs_dir = config["paths"]["hs_dir"]
+dict_dir = config["paths"]["dict_dir"]
 
 clients = {}  # {client_id: status}
 
@@ -28,7 +30,7 @@ mqtt_client = MQTT(id)
 def send_system_stats():
     while True:
         stats = {
-            "client_id": "client-id",
+            "client_id": id,
             "cpu": psutil.cpu_percent(),
             "ram": psutil.virtual_memory().percent,
             "disk": psutil.disk_usage("/").percent
@@ -43,10 +45,10 @@ def do_task(task):
     }))
 
     print(f"[{CLIENT_ID}] Starting task...")
-    pcap_file = task["pcap_file"]
-    dict_file = task["dict_file"]
+    pcap_path = f"{hs_dir}/{task['pcap_file']}"
+    dict_path = f"{dict_dir}/{task['dict_file']}"
 
-    result = analyze_and_run_aircrack(pcap_file, dict_file)
+    result = analyze_and_run_aircrack(pcap_path, dict_path)
 
     mqtt_client.publish(result_topic, json.dumps({
         "result": result
@@ -77,6 +79,7 @@ def main():
     mqtt_client.subscribe(task_topic)
 
     threading.Thread(target=announce_loop, daemon=True).start()
+    threading.Thread(target=send_system_stats, daemon=True).start()
 
     while True:
         msg = mqtt_client.get_message()

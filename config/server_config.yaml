@@ -1,4 +1,6 @@
 server:
   id: server
-  hs_dir: "uploads/"
+
+paths: 
+  hs_dir: "/home/mavotronik/cluster-test"
   dict_dir: "dicts"

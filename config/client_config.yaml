@@ -1,4 +1,6 @@
 client:
-  id: client_2
-  hs_dir: "uploads"
+  id: client_1
+
+paths: 
+  hs_dir: "/home/mavotronik/cluster-test"
   dict_dir: "dicts"
