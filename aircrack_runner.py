@@ -1,6 +1,27 @@
 import subprocess
 import re
 from typing import Callable, Dict, Optional
+import yaml
+import logging
+
+
+def load_config(file_path="config/server_config.yaml"):
+    with open(file_path, "r") as f:
+        return yaml.safe_load(f)
+
+config = load_config()
+loglevel_str = config["logs"]["level"].upper()
+
+logger = logging.getLogger("aircrack-runner")
+loglevel = getattr(logging, loglevel_str, logging.INFO)
+logger.setLevel(loglevel)
+
+file_handler = logging.FileHandler("aircrack-runnerlog", encoding="utf-8")
+formatter = logging.Formatter('%(filename)s %(asctime)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S')
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.propagate = False
 
 
 def analyze_pcap(pcap_file: str) -> Optional[str]:
@@ -113,8 +134,10 @@ def analyze_and_run_aircrack(pcap_file: str, dict_file: str) -> str:
         with open(result_filename, "w") as f:
             f.write(result + "\n")
         print(f"[+] Result saved to {result_filename}")
+        logging.info(f"[+] Result saved to {result_filename}")
     except IOError as e:
         print(f"[!] Failed to save result: {e}")
+        logging.error(f"[!] Failed to save result: {e}")
 
     return result
 
