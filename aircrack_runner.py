@@ -134,10 +134,10 @@ def analyze_and_run_aircrack(pcap_file: str, dict_file: str) -> str:
         with open(result_filename, "w") as f:
             f.write(result + "\n")
         print(f"[+] Result saved to {result_filename}")
-        logging.info(f"[+] Result saved to {result_filename}")
+        logger.info(f"[+] Result saved to {result_filename}")
     except IOError as e:
         print(f"[!] Failed to save result: {e}")
-        logging.error(f"[!] Failed to save result: {e}")
+        logger.error(f"[!] Failed to save result: {e}")
 
     return result
 
