@@ -4,3 +4,6 @@ mqtt:
   username: ""
   password: ""
   client_id: "mqtt"
+
+logs:
+  level: DEBUG # DEBUG, INFO, WARNING, ERROR

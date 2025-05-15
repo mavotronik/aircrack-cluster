@@ -4,3 +4,6 @@ server:
 paths: 
   hs_dir: "/home/mavotronik/cluster-test"
   dict_dir: "dicts"
+
+logs:
+  level: DEBUG # DEBUG, INFO, WARNING, ERROR

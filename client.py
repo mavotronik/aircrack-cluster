@@ -6,6 +6,7 @@ from mqtt import MQTT
 import yaml
 from aircrack_runner import analyze_and_run_aircrack
 import psutil
+import logging
 
 
 def load_config(file_path="config/client_config.yaml"):
@@ -16,6 +17,7 @@ config = load_config()
 id = config["client"]["id"]
 hs_dir = config["paths"]["hs_dir"]
 dict_dir = config["paths"]["dict_dir"]
+loglevel_str = config["logs"]["level"].upper()
 
 clients = {}  # {client_id: status}
 
@@ -26,6 +28,17 @@ task_topic = f"cluster/tasks/assign/{CLIENT_ID}"
 result_topic = f"cluster/tasks/result/{CLIENT_ID}"
 
 mqtt_client = MQTT(id)
+
+logger = logging.getLogger("client")
+loglevel = getattr(logging, loglevel_str, logging.INFO)
+logger.setLevel(loglevel)
+
+file_handler = logging.FileHandler("client.log", encoding="utf-8")
+formatter = logging.Formatter('%(filename)s %(asctime)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S')
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.propagate = False 
 
 def send_system_stats():
     while True:
@@ -44,9 +57,11 @@ def do_task(task):
         "status": "busy"
     }))
 
-    print(f"[{CLIENT_ID}] Starting task...")
+
     pcap_path = f"{hs_dir}/{task['pcap_file']}"
     dict_path = f"{dict_dir}/{task['dict_file']}"
+    print(f"[{CLIENT_ID}] Starting task... pcap: {pcap_path} dict: {dict_path}")
+    logger.info(f"[{CLIENT_ID}] Starting task... pcap: {pcap_path} dict: {dict_path}")
 
     result = analyze_and_run_aircrack(pcap_path, dict_path)
 
@@ -59,12 +74,14 @@ def do_task(task):
         "status": "free"
     }))
     print(f"[{CLIENT_ID}] Finished task: {result}")
+    logger.info(f"[{CLIENT_ID}] Finished task: {result}")
 
 
 def handle_message(topic, payload):
     if topic == task_topic:
         task = json.loads(payload)
         print(f"[{CLIENT_ID}] Task received: {task}")
+        logger.info(f"[{CLIENT_ID}] Task received: {task}")
         threading.Thread(target=do_task, args=(task,), daemon=True).start()
 
 def announce_loop():
@@ -72,6 +89,7 @@ def announce_loop():
         mqtt_client.publish(announce_topic, json.dumps({
             "client_id": CLIENT_ID
         }))
+        logger.info(f"[♥] Announce published: {CLIENT_ID}")
         time.sleep(10)
 
 def main():
@@ -90,3 +108,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    logging.info("Client: HELLO!")
