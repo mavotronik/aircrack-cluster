@@ -16,7 +16,7 @@ logger = logging.getLogger("aircrack-runner")
 loglevel = getattr(logging, loglevel_str, logging.INFO)
 logger.setLevel(loglevel)
 
-file_handler = logging.FileHandler("aircrack-runnerlog", encoding="utf-8")
+file_handler = logging.FileHandler("aircrack-runner.log", encoding="utf-8")
 formatter = logging.Formatter('%(filename)s %(asctime)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S')
 file_handler.setFormatter(formatter)
 
